@@ -1,36 +1,68 @@
-// Here is where we import modules
-// We begin by loading Express
-const dotenv = require('dotenv');
+const dotenv = require("dotenv");
 dotenv.config();
-const express = require('express');
-const methodOverride = require("method-override");
-const morgan = require('morgan');
-const port = 3000;
+const express = require("express");
 const app = express();
-const mongoose = require('mongoose');
+const session = require('express-session');
+
+const mongoose = require("mongoose");
+const methodOverride = require("method-override");
+const morgan = require("morgan");
+
+// Set the port from environment variable or default to 3000
+const port = process.env.PORT ? process.env.PORT : "3000";
+// conrollers
+const authController = require("./controllers/auth.js");
+
+
+
 mongoose.connect(process.env.MONGODB_URI);
 
 mongoose.connection.on("connected", () => {
   console.log(`Connected to MongoDB ${mongoose.connection.name}.`);
 });
 
-// Import the Fruit model
-const Food = require("./models/food.js");
+// Middleware to parse URL-encoded data from forms
 app.use(express.urlencoded({ extended: false }));
+// Middleware for using HTTP verbs such as PUT or DELETE
 app.use(methodOverride("_method"));
-app.use(morgan("dev"))
+// Morgan for logging HTTP requests
+app.use(morgan('dev'));
+// app.use session MUST come before controllers and routes.
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: true,
+  })
+);
+app.use("/auth", authController);
 
-app.use(express.static(path.join(__dirname, "public")));
 
 
 // server.js
 
 // GET /
-app.get("/", async (req, res) => {
-  res.send("hello, friend!");
+app.get("/", (req, res) => {
+  res.render("index.ejs", {
+    user: req.session.user,
+  });
+});
+
+app.get("/vip-lounge", (req, res) => {
+  if (req.session.user) {
+    res.send(`Welcome to the party ${req.session.user.username}.`);
+  } else {
+    res.send("Sorry, no guests allowed.");
+  }
 });
 
 
+
+
+
+
+
+
 app.listen(port, () => {
-  console.log('Listening on port 3000');
+  console.log(`The express app is ready on port ${port}!`);
 });
